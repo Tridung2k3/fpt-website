@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bảng điểm sinh viên</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --panel:#FFFFFF;
+    --ink:#1A1A1A;
+    --muted:#6B7280;
+    --line:#E5E7EB;
+    --orange:#F2641E;
+    --orange-dark:#D9551A;
+    --orange-soft:#FDECE3;
+    --red:#D92B2B;
+    --red-dark:#B91F1F;
+    --pass:#16A34A;
+    --warn:#D92B2B;
+    color-scheme: light;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif; margin:0;}
+
+  .shell{display:grid; grid-template-columns:240px 1fr; min-height:100svh;}
+  @media (max-width:880px){ .shell{grid-template-columns:1fr;} .sidebar{display:none;} }
+
+  /* ---- Sidebar ---- */
+  .sidebar{
+    background:#FFFFFF;
+    color:var(--ink);
+    padding:26px 18px;
+    display:flex; flex-direction:column; gap:26px;
+    border-right:1px solid var(--line);
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .logo-upload{
+    position:relative; cursor:pointer; flex:none;
+    width:34px; height:34px; border-radius:7px; overflow:hidden;
+  }
+  .logo-upload img{width:100%; height:100%; object-fit:cover; display:block;}
+  .logo-upload input[type=file]{position:absolute; inset:0; opacity:0; cursor:pointer;}
+  .brand-mark{
+    width:34px; height:34px; border-radius:7px;
+    background:var(--orange);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; color:#fff; font-size:15px;
+  }
+  .brand-text{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; line-height:1.25; color:var(--ink);}
+  .brand-text small{display:block; font-weight:400; font-size:11.5px; color:var(--muted);}
+  .brand-text span[contenteditable="true"]{outline:none; border-radius:3px; padding:0 2px;}
+  .brand-text span[contenteditable="true"]:focus{box-shadow:0 0 0 2px rgba(242,100,30,.35); background:var(--orange-soft);}
+
+  nav{display:flex; flex-direction:column; gap:2px;}
+  nav a{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 10px; border-radius:6px;
+    color:var(--muted); text-decoration:none; font-size:13.5px;
+  }
+  nav a.active{background:var(--line); color:var(--ink); font-weight:500;}
+  nav a:hover{background:rgba(0,0,0,.035);}
+  nav .dot{width:5px; height:5px; border-radius:50%; background:var(--orange); flex:none;}
+
+  /* ---- Main ---- */
+  main{padding:28px 32px 60px;}
+  @media (max-width:600px){ main{padding:20px 16px 48px;} }
+
+  .topbar{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:22px; flex-wrap:wrap; gap:12px;
+  }
+  .crumb{font-size:13px; color:var(--muted);}
+  .crumb b{color:var(--ink); font-weight:600;}
+  .user{font-size:13.5px; color:var(--muted);}
+  .user b{color:var(--ink);}
+
+  .major-line{
+    font-size:14.5px; color:var(--muted); margin-bottom:18px;
+  }
+  .major-line b{color:var(--ink); font-weight:600;}
+  .major-line input{
+    font:inherit; color:inherit; background:transparent; border:none; border-bottom:1px dashed var(--line);
+    padding:0 2px; min-width:220px;
+  }
+  .major-line input:focus{outline:none; border-color:var(--orange);}
+
+  .toolbar{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+  .action-group{
+    display:flex; background:var(--red); border-radius:6px; overflow:hidden;
+  }
+  .action-group button{
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+    padding:8px 14px; border:none; border-right:1px solid rgba(255,255,255,.18);
+    background:transparent; color:#fff; cursor:pointer;
+  }
+  .action-group button:last-child{border-right:none;}
+  .action-group button:hover{background:var(--red-dark);}
+
+  .table-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow-x:auto;
+  }
+  table{width:100%; border-collapse:collapse; min-width:900px;}
+  thead th{
+    text-align:left; font-size:12.5px; font-weight:700; color:var(--ink);
+    text-transform:none; padding:11px 12px; border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:10px 12px; font-size:13.5px; border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--orange-soft)}
+
+  td[contenteditable="true"], th[contenteditable="true"]{
+    outline:none; border-radius:4px;
+  }
+  td[contenteditable="true"]:focus{box-shadow:0 0 0 2px rgba(242,100,30,.35); background:var(--orange-soft);}
+
+  .status-pill{
+    display:inline-block; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .status-passed{color:var(--pass);}
+  .status-retake{color:var(--warn);}
+
+  .row-del{
+    border:none; background:none; color:var(--muted); cursor:pointer; font-size:15px; line-height:1;
+    padding:4px 6px; border-radius:4px;
+  }
+  .row-del:hover{color:var(--red); background:rgba(217,43,43,.08);}
+
+  .summary{
+    margin-top:22px; display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
+  }
+  @media (max-width:900px){ .summary{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:500px){ .summary{grid-template-columns:1fr;} }
+  .stat-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px 18px;
+  }
+  .stat-card .label{font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+  .stat-card .value{font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; color:var(--orange-dark);}
+
+  .note{font-size:12.5px; color:var(--warn); margin-top:14px;}
+
+  .stats-table{margin-top:26px;}
+  .stats-table h2{font-size:16px; margin-bottom:12px;}
+
+  .footer-note{margin-top:40px; font-size:12px; color:var(--muted); text-align:center;}
+
+  @media print{
+    .sidebar, .toolbar, nav, .row-del{ display:none !important; }
+    .shell{ display:block; }
+    main{ padding:0; }
+    body{ background:#fff; }
+    .table-card{ border:1px solid #ccc; }
+    #gradeTable th:last-child, #gradeTable td:last-child{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <label class="logo-upload" title="Nhấn để đổi logo">
+        <img id="logoImg" alt="Logo" style="display:none;">
+        <span class="brand-mark" id="logoPlaceholder">AC</span>
+        <input type="file" id="logoInput" accept="image/*" hidden>
+      </label>
+      <div class="brand-text">
+        <span contenteditable="true" id="schoolName">Tên trường của bạn</span>
+        <small>Cổng đào tạo</small>
+      </div>
+    </div>
+    <nav>
+      <a href="#"><span class="dot"></span>Thông báo</a>
+      <a href="#"><span class="dot"></span>Điểm danh</a>
+      <a href="#"><span class="dot"></span>Lịch học</a>
+      <a href="#" class="active"><span class="dot"></span>Bảng điểm</a>
+      <a href="#"><span class="dot"></span>Khen thưởng / Kỷ luật</a>
+      <a href="#"><span class="dot"></span>Tài chính sinh viên</a>
+      <a href="#"><span class="dot"></span>Dịch vụ trực tuyến</a>
+      <a href="#"><span class="dot"></span>Hỗ trợ</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div class="crumb">Bảng điểm &nbsp;/&nbsp; <b>Điểm</b></div>
+      <div class="user">Xin chào, <b contenteditable="true" id="studentName">Sinh viên</b></div>
+    </div>
+
+    <div class="major-line">
+      Chuyên ngành: <input id="majorInput" value="Thiết kế đồ họa (Dựng phim và quảng cáo)">
+    </div>
+    <div class="major-line">
+      Tổng số tín chỉ chương trình (phải học): <input id="programCreditsInput" value="103" style="width:70px;">
+    </div>
+
+    <div class="toolbar">
+      <div class="action-group">
+        <button id="printBtn">In bảng điểm</button>
+        <button id="pdfBtn">Xuất PDF</button>
+        <button id="csvBtn">Xuất CSV</button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table id="gradeTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Kỳ</th>
+            <th>Học kỳ</th>
+            <th>Môn học</th>
+            <th>Mã môn</th>
+            <th>Tín chỉ</th>
+            <th>Điểm /10</th>
+            <th>Điểm /4</th>
+            <th>Điểm chữ</th>
+            <th>Trạng thái</th>
+            <th class="actionsCol"></th>
+          </tr>
+        </thead>
+        <tbody id="gradeBody"><!-- rows injected by JS --></tbody>
+      </table>
+    </div>
+
+    <div class="note">Môn Giáo dục thể chất, Giáo dục quốc phòng và Thực tập/Dự án tốt nghiệp (nếu có) không tính vào điểm trung bình toàn khoá — đánh dấu ở cột trạng thái nếu áp dụng.</div>
+
+    <div class="summary">
+      <div class="stat-card">
+        <div class="label">Điểm trung bình (thang 10)</div>
+        <div class="value" id="avg10">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Điểm trung bình (thang 4)</div>
+        <div class="value" id="avg4">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Tín chỉ đạt / tổng</div>
+        <div class="value" id="creditRatio">—</div>
+      </div>
+    </div>
+
+    <div class="stats-table">
+      <h2>Thống kê</h2>
+      <div class="table-card">
+        <table style="min-width:600px;">
+          <thead>
+            <tr>
+              <th>Tổng môn chưa học</th>
+              <th>Tổng môn đạt</th>
+              <th>Tổng môn học lại</th>
+              <th>Tổng môn đang học</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td id="statNotTaken">0</td>
+              <td id="statPassed">0</td>
+              <td id="statRetake">0</td>
+              <td id="statOngoing">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<script>
+(function(){
+  // Starter data — edit freely, or clear and add your own rows.
+  let rows = [
+    {ky:1, hocky:'Summer 2024', mon:'Tin học', ma:'COM1071', tinchi:3, d10:7.0, chu:'B', trangthai:'passed'},
+    {ky:1, hocky:'Fall 2024', mon:'Tiếng Anh 1.1', ma:'ENT1128', tinchi:3, d10:5.8, chu:'C', trangthai:'passed'},
+    {ky:1, hocky:'Fall 2024', mon:'Thiết kế hình ảnh với Photoshop', ma:'MUL1013', tinchi:3, d10:8.2, chu:'A−', trangthai:'passed'},
+    {ky:1, hocky:'Fall 2024', mon:'Nhập môn đồ họa', ma:'MUL116', tinchi:3, d10:6.8, chu:'B−', trangthai:'passed'},
+    {ky:1, hocky:'Fall 2024', mon:'Kỹ năng học tập', ma:'PDP102', tinchi:2, d10:7.8, chu:'B+', trangthai:'passed'},
+    {ky:1, hocky:'Spring 2025', mon:'Giáo dục thể chất - Vovinam', ma:'VIE103', tinchi:2, d10:7.6, chu:'B+', trangthai:'passed'},
+    {ky:2, hocky:'Spring 2025', mon:'Tiếng Anh 1.2', ma:'ENT1227', tinchi:3, d10:6.3, chu:'C+', trangthai:'passed'},
+    {ky:2, hocky:'Spring 2025', mon:'Thiết kế minh họa với Illustrator', ma:'MUL1024', tinchi:3, d10:7.2, chu:'B', trangthai:'passed'},
+    {ky:2, hocky:'Spring 2025', mon:'Luật xa gần và bố cục trong thiết kế đồ họa', ma:'MUL1143', tinchi:3, d10:8.0, chu:'A−', trangthai:'passed'},
+    {ky:2, hocky:'Spring 2025', mon:'Chế bản điện tử với InDesign', ma:'MUL2111', tinchi:3, d10:7.5, chu:'B+', trangthai:'passed'},
+    {ky:2, hocky:'Spring 2025', mon:'Màu sắc', ma:'MUL2143', tinchi:3, d10:7.4, chu:'B', trangthai:'passed'},
+    {ky:2, hocky:'Fall 2025', mon:'Chính trị', ma:'VIE1016', tinchi:4, d10:9.2, chu:'A+', trangthai:'passed'},
+    {ky:3, hocky:'Summer 2025', mon:'Tiếng Anh 2.1', ma:'ENT2127', tinchi:3, d10:6.6, chu:'B−', trangthai:'passed'},
+    {ky:3, hocky:'Summer 2025', mon:'Thiết kế bao bì', ma:'MUL2123', tinchi:3, d10:7.5, chu:'B+', trangthai:'passed'},
+    {ky:3, hocky:'Summer 2025', mon:'Nghệ thuật chữ', ma:'MUL2133', tinchi:3, d10:7.4, chu:'B', trangthai:'passed'},
+    {ky:3, hocky:'Summer 2025', mon:'Thiết kế thương hiệu và Marketing', ma:'MUL3191', tinchi:3, d10:6.1, chu:'C+', trangthai:'passed'},
+    {ky:3, hocky:'Summer 2025', mon:'Kỹ năng phát triển bản thân', ma:'PDP103', tinchi:2, d10:6.9, chu:'B−', trangthai:'passed'},
+    {ky:3, hocky:'Summer 2025', mon:'Dự án 1 (TKĐH)', ma:'PRO1112', tinchi:3, d10:6.0, chu:'C+', trangthai:'passed'},
+    {ky:4, hocky:'Fall 2025', mon:'Tiếng Anh 2.2', ma:'ENT2227', tinchi:3, d10:6.3, chu:'C+', trangthai:'passed'},
+    {ky:4, hocky:'Spring 2026', mon:'Kỹ thuật nhiếp ảnh', ma:'MUL117', tinchi:3, d10:6.2, chu:'C+', trangthai:'passed'},
+    {ky:4, hocky:'Fall 2025', mon:'Kỹ thuật in', ma:'MUL215', tinchi:3, d10:7.8, chu:'B+', trangthai:'passed'},
+    {ky:4, hocky:'Fall 2025', mon:'Ý tưởng sáng tạo', ma:'MUL217', tinchi:3, d10:8.5, chu:'A', trangthai:'passed'},
+    {ky:4, hocky:'Fall 2025', mon:'Dựng hình với Maya 3D', ma:'MUL222', tinchi:3, d10:8.0, chu:'A−', trangthai:'passed'},
+    {ky:4, hocky:'Fall 2025', mon:'Kịch bản phim quảng cáo', ma:'MUL2231', tinchi:3, d10:9.1, chu:'A+', trangthai:'passed'},
+    {ky:5, hocky:'Spring 2026', mon:'Quay và dựng phim với Adobe Premiere', ma:'MUL224', tinchi:3, d10:6.9, chu:'B−', trangthai:'passed'},
+    {ky:5, hocky:'Spring 2026', mon:'Hiệu ứng kỹ xảo với Adobe After Effect', ma:'MUL3211', tinchi:3, d10:6.9, chu:'B−', trangthai:'passed'},
+    {ky:5, hocky:'Spring 2026', mon:'Dựng hình với C4D', ma:'MUL3231', tinchi:3, d10:7.7, chu:'B+', trangthai:'passed'},
+    {ky:5, hocky:'Spring 2026', mon:'Chuyển động với C4D', ma:'MUL3241', tinchi:3, d10:8.3, chu:'A−', trangthai:'passed'},
+    {ky:5, hocky:'Spring 2026', mon:'Kỹ năng làm việc', ma:'PDP104', tinchi:2, d10:6.1, chu:'C+', trangthai:'passed'},
+    {ky:5, hocky:'Spring 2026', mon:'Khởi sự doanh nghiệp', ma:'SYB3013', tinchi:3, d10:7.7, chu:'B+', trangthai:'passed'},
+    {ky:6, hocky:'Summer 2026', mon:'Thực tập tốt nghiệp (TKĐH)', ma:'PRO119', tinchi:5, d10:10.0, chu:'A+', trangthai:'passed'},
+    {ky:6, hocky:'Summer 2026', mon:'Dự án tốt nghiệp (TKĐH-Phim và Quảng cáo)', ma:'PRO2212', tinchi:5, d10:5.7, chu:'C', trangthai:'passed'},
+    {ky:6, hocky:'Fall 2025', mon:'Pháp luật', ma:'VIE1026', tinchi:2, d10:7.2, chu:'B', trangthai:'passed'},
+    {ky:6, hocky:'Summer 2024', mon:'Giáo dục quốc phòng', ma:'VIE104', tinchi:4, d10:7.0, chu:'B', trangthai:'passed'}
+  ];
+
+  const body = document.getElementById('gradeBody');
+
+  function d10to4(d){
+    if(d>=9) return 4; if(d>=8.5) return 3.7; if(d>=8) return 3.5;
+    if(d>=7) return 3; if(d>=6.5) return 2.5; if(d>=5.5) return 2;
+    if(d>=5) return 1.5; if(d>=4) return 1; return 0;
+  }
+
+  function render(){
+    body.innerHTML = '';
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      const d4 = d10to4(parseFloat(r.d10)||0).toFixed(2);
+      tr.innerHTML = `
+        <td>${i+1}</td>
+        <td contenteditable="true" data-field="ky">${r.ky}</td>
+        <td contenteditable="true" data-field="hocky">${r.hocky}</td>
+        <td contenteditable="true" data-field="mon">${r.mon}</td>
+        <td contenteditable="true" data-field="ma">${r.ma}</td>
+        <td contenteditable="true" data-field="tinchi">${r.tinchi}</td>
+        <td contenteditable="true" data-field="d10">${r.d10}</td>
+        <td>${d4}</td>
+        <td contenteditable="true" data-field="chu">${r.chu}</td>
+        <td data-field="trangthai">
+          <span class="status-pill ${r.trangthai==='passed' ? 'status-passed':'status-retake'}" data-role="pill">
+            ${r.trangthai==='passed' ? 'Đạt' : (r.trangthai==='ongoing' ? 'Đang học' : 'Học lại')}
+          </span>
+        </td>
+        <td><button class="row-del" title="Xoá môn" data-idx="${i}">✕</button></td>
+      `;
+      // click status to cycle
+      tr.querySelector('[data-role="pill"]').addEventListener('click', () => {
+        r.trangthai = r.trangthai === 'passed' ? 'retake' : (r.trangthai === 'retake' ? 'ongoing' : 'passed');
+        render();
+      });
+      // editable fields
+      tr.querySelectorAll('[contenteditable="true"]').forEach(cell => {
+        cell.addEventListener('blur', () => {
+          const f = cell.dataset.field;
+          let v = cell.textContent.trim();
+          if(f === 'ky' || f === 'tinchi') v = parseFloat(v) || 0;
+          if(f === 'd10') v = parseFloat(v) || 0;
+          r[f] = v;
+          if(f === 'd10') render();
+        });
+      });
+      tr.querySelector('.row-del').addEventListener('click', () => {
+        rows.splice(i,1);
+        render();
+      });
+      body.appendChild(tr);
+    });
+    recalc();
+  }
+
+  function recalc(){
+    const counted = rows.filter(r => r.trangthai !== 'ongoing');
+    const totalCredits = counted.reduce((s,r)=>s+(parseFloat(r.tinchi)||0),0);
+    const sum10 = counted.reduce((s,r)=>s+(parseFloat(r.tinchi)||0)*(parseFloat(r.d10)||0),0);
+    const sum4 = counted.reduce((s,r)=>s+(parseFloat(r.tinchi)||0)*d10to4(parseFloat(r.d10)||0),0);
+    document.getElementById('avg10').textContent = totalCredits ? (sum10/totalCredits).toFixed(2) : '—';
+    document.getElementById('avg4').textContent = totalCredits ? (sum4/totalCredits).toFixed(2) : '—';
+
+    const passedCredits = rows.filter(r=>r.trangthai==='passed').reduce((s,r)=>s+(parseFloat(r.tinchi)||0),0);
+    const allCredits = rows.reduce((s,r)=>s+(parseFloat(r.tinchi)||0),0);
+    document.getElementById('creditRatio').textContent = `${passedCredits}/${allCredits}`;
+
+    document.getElementById('statPassed').textContent = rows.filter(r=>r.trangthai==='passed').length;
+    document.getElementById('statRetake').textContent = rows.filter(r=>r.trangthai==='retake').length;
+    document.getElementById('statOngoing').textContent = rows.filter(r=>r.trangthai==='ongoing').length;
+    document.getElementById('statNotTaken').textContent = '0';
+  }
+
+  document.getElementById('logoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = document.getElementById('logoImg');
+      img.src = ev.target.result;
+      img.style.display = 'block';
+      document.getElementById('logoPlaceholder').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('programCreditsInput').addEventListener('input', recalc);
+
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+  document.getElementById('pdfBtn').addEventListener('click', () => {
+    const btn = document.getElementById('pdfBtn');
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Đang tạo PDF...';
+    const opt = {
+      margin: 10,
+      filename: 'bang-diem.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        ignoreElements: (el) => el.classList && (el.classList.contains('toolbar') || el.classList.contains('row-del') || el.classList.contains('actionsCol'))
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(document.querySelector('main')).save().then(() => {
+      btn.disabled = false;
+      btn.textContent = original;
+    }).catch(() => {
+      btn.disabled = false;
+      btn.textContent = original;
+      alert('Không tạo được PDF, vui lòng thử lại hoặc dùng nút "In bảng điểm" rồi chọn Lưu thành PDF.');
+    });
+  });
+
+  document.getElementById('csvBtn').addEventListener('click', () => {
+    const header = ['Kỳ','Học kỳ','Môn học','Mã môn','Tín chỉ','Điểm 10','Điểm 4','Điểm chữ','Trạng thái'];
+    const lines = [header.join(',')];
+    rows.forEach(r => {
+      lines.push([r.ky,r.hocky,r.mon,r.ma,r.tinchi,r.d10,d10to4(parseFloat(r.d10)||0).toFixed(2),r.chu,r.trangthai].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+    });
+    const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'bang-diem.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
